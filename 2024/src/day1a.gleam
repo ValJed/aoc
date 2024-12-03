@@ -11,27 +11,13 @@ pub fn main() {
   let lines = filecontent |> string.split("\n")
 
   let result = create_lists(lines)
-    |> compute_lists()
+    |> sort_lists()
+    |> join_lists()
+    |> compute_diffs()
     |> list.reduce(fn(acc, cur) { acc + cur })
     |> result.unwrap(0)
 
   io.debug(result)
-}
-
-fn compute_lists(lists: #(List(Int), List(Int))) -> List(Int) {
-  list.filter_map(lists.0, fn(left) -> Result(Int, _){
-    let muliplier = list.fold(lists.1, 0, fn(acc, right) {
-      case right == left {
-        True -> acc + 1
-        False -> acc
-      }
-    })
-
-    case muliplier == 0 {
-      True -> Error("")
-      False -> Ok(left * muliplier)
-    }
-  })
 }
 
 fn create_lists(lines: List(String)) -> #(List(Int), List(Int)) {
@@ -56,5 +42,25 @@ fn create_lists(lines: List(String)) -> #(List(Int), List(Int)) {
       }
     }
   })
+}
+
+fn join_lists(lists: #(List(Int), List(Int))) -> List(#(Int, Int)) {
+  list.zip(lists.0, lists.1)
+}
+
+fn compute_diffs(lists: List(#(Int, Int))) -> List(Int) {
+  list.map(lists, fn(cur) {
+    case cur.0 > cur.1 {
+      True -> cur.0 - cur.1
+      False -> cur.1 - cur.0
+    }
+  })
+}
+
+fn sort_lists(lists: #(List(Int), List(Int))) -> #(List(Int), List(Int)) {
+  let left = list.sort(lists.0, int.compare)
+  let right = list.sort(lists.1, int.compare)
+
+  #(left, right)
 }
 
