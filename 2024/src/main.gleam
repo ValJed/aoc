@@ -5,56 +5,102 @@ import gleam/list
 import gleam/int
 import simplifile
 
-pub fn main() {
-  let filepath = "./data/day1"
-  let filecontent = result.unwrap(simplifile.read(filepath), "")
-  let lines = filecontent |> string.split("\n")
-
-  let result = create_lists(lines)
-    |> compute_lists()
-    |> list.reduce(fn(acc, cur) { acc + cur })
-    |> result.unwrap(0)
-
-  io.debug(result)
+pub type State {
+  Up
+  Down
+  None
+  Start
+  Fail
 }
 
-fn compute_lists(lists: #(List(Int), List(Int))) -> List(Int) {
-  list.filter_map(lists.0, fn(left) -> Result(Int, _){
-    let muliplier = list.fold(lists.1, 0, fn(acc, right) {
-      case right == left {
-        True -> acc + 1
-        False -> acc
-      }
-    })
+pub type Store = #(State, Int, Int)
+// pub type Store {
+//   Data(state: State, previous: Int)
+// }
 
-    case muliplier == 0 {
-      True -> Error("")
-      False -> Ok(left * muliplier)
+pub fn main() {
+  let filepath = "./data/day2"
+  let filecontent = result.unwrap(simplifile.read(filepath), "")
+  let reports = filecontent 
+    |> string.split("\n")
+    |> list.map(format)
+    |> list.map(check_report)
+    |> count_safe()
+
+  io.debug(reports)
+}
+
+fn format(line: String) -> List(Int) {
+  line
+    |> string.split(" ")
+    |> list.map(fn(str) {
+      int.parse(str) |> result.unwrap(0)
+    })
+}
+
+fn count_safe(reports: List(Store)) -> Int {
+  list.fold(reports, 0, fn(acc, cur) {
+    case cur.0 {
+      Up | Down -> acc + 1
+      _ -> acc
     }
   })
 }
 
-fn create_lists(lines: List(String)) -> #(List(Int), List(Int)) {
-  list.fold(lines, #([], []), fn(acc, cur) -> #(List(Int), List(Int)) {
-    case cur {
-      "" -> acc
+fn check_report(report: List(Int)) -> Store {
+  let rep = list.fold(report, #(Start, 0, 0), fn(acc, num) {
+    let state = acc.0
+    let previous = acc.1
+    let errors = acc.2
+
+    case errors > 1 {
+      True -> #(Fail, num, errors)
       _ -> {
-        let splitted = cur 
-          |> string.split("   ") 
-          |> list.map(fn(x) {result.unwrap(int.parse(x), 0)})
-
-        case splitted {
-          [left, right] -> {
-            let #(acc_left, acc_right) = acc 
-            let new_left = [left, ..acc_left]
-            let new_right = [right, ..acc_right]
-
-            #(new_left, new_right)
+        case state {
+          Start -> #(None, num, errors)
+          None -> {
+            case num < previous {
+              True -> validate_down(num, previous, errors, state)
+              False -> validate_up(num, previous, errors, state)
+            }
           }
-          _ -> acc
+          Up -> validate_up(num, previous, errors, state)
+          Down -> validate_down(num, previous, errors, state)
+          Fail -> #(Fail, num, errors)
         }
       }
     }
+
   })
+
+  io.debug(rep)
+  rep
 }
 
+fn validate_up( num: Int, previous: Int, errors: Int, state: State) -> Store {
+  let diff = num - previous
+
+  io.debug(state)
+  case diff > 0 && diff < 4 {
+    True -> #(Up, num, errors)
+    False -> {
+      case errors == 0 {
+        True -> #(state, previous, 1)
+        False -> #(Fail, num, errors)
+      }
+    }
+  }
+}
+
+fn validate_down(num: Int, previous: Int, errors: Int, state: State) -> Store {
+  let diff = previous - num
+  case diff > 0 && diff < 4 {
+    True -> #(Down, num, errors)
+    False -> {
+      case errors == 0 {
+        True -> #(state, previous, 1)
+        False -> #(Fail, num, errors)
+      }
+    }
+  }
+}
