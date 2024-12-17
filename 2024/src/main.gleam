@@ -1,121 +1,47 @@
 import gleam/int
 import gleam/io
 import gleam/list
+import gleam/option.{Some}
+import gleam/regexp.{type Match}
 import gleam/result
-import gleam/string
 import simplifile
 
-pub type State {
-  Up
-  Down
-  None
-  Start
-  Fail
-}
-
-pub type Store =
-  #(State, Int)
-
 pub fn main() {
-  let filepath = "./data/day2"
+  let filepath = "./data/day3"
   let filecontent = result.unwrap(simplifile.read(filepath), "")
-  let safe_reports =
+  let result =
     filecontent
-    |> string.split("\n")
-    |> list.filter_map(format)
-    |> list.map(check_dampener)
-    |> count_safe()
+    |> get_occurences
+    |> list.reduce(fn(acc, cur) { acc + cur })
+    |> result.unwrap(0)
 
-  io.print("Safe Reports: \n")
-  io.debug(safe_reports)
+  io.debug(result)
 }
 
-fn format(line: String) -> Result(List(Int), String) {
-  let collec =
-    line
-    |> string.split(" ")
-    |> list.map(fn(str) { int.parse(str) |> result.unwrap(0) })
-
-  case list.length(collec) > 1 {
-    True -> Ok(collec)
-    False -> Error("")
-  }
-}
-
-fn count_safe(reports: List(Bool)) -> Int {
-  list.fold(reports, 0, fn(acc, cur) {
-    case cur {
-      True -> acc + 1
-      _ -> acc
+fn get_occurences(file: String) -> List(Int) {
+  let regex = regexp.from_string("mul\\((\\d+),(\\d+)\\)")
+  case regex {
+    Ok(re) -> {
+      regexp.scan(re, file)
+      |> list.filter_map(try_multiply)
     }
-  })
-}
-
-fn check_dampener(report: List(Int)) -> Bool {
-  let checked = check_report(report)
-  case checked {
-    True -> True
-    False -> {
-      test_dampener([], report)
+    Error(_) -> {
+      io.println("Bad Regex")
+      []
     }
   }
 }
 
-fn test_dampener(prev: List(Int), cur: List(Int)) -> Bool {
-  case cur {
-    [] -> False
-    [first, ..rest] -> {
-      let new_list = list.append(prev, rest)
-      let good = check_report(new_list)
-
-      case good {
-        True -> True
-        False -> {
-          test_dampener(list.append(prev, [first]), rest)
+fn try_multiply(match: Match) -> Result(Int, String) {
+  case match.submatches {
+    [Some(str1), Some(str2)] -> {
+      case int.parse(str1), int.parse(str2) {
+        Ok(num1), Ok(num2) -> {
+          Ok(num1 * num2)
         }
+        _, _ -> Error("")
       }
     }
-  }
-}
-
-fn check_report(report: List(Int)) -> Bool {
-  let report =
-    list.fold(report, #(Start, 0), fn(acc, num) {
-      let state = acc.0
-      let previous = acc.1
-
-      case state {
-        Start -> #(None, num)
-        None -> {
-          case num < previous {
-            True -> validate_down(num, previous)
-            False -> validate_up(num, previous)
-          }
-        }
-        Up -> validate_up(num, previous)
-        Down -> validate_down(num, previous)
-        Fail -> #(Fail, num)
-      }
-    })
-
-  case report.0 {
-    Up | Down -> True
-    _ -> False
-  }
-}
-
-fn validate_up(num: Int, previous: Int) -> Store {
-  let diff = num - previous
-  case diff > 0 && diff < 4 {
-    True -> #(Up, num)
-    False -> #(Fail, num)
-  }
-}
-
-fn validate_down(num: Int, previous: Int) -> Store {
-  let diff = previous - num
-  case diff > 0 && diff < 4 {
-    True -> #(Down, num)
-    False -> #(Fail, num)
+    _ -> Error("")
   }
 }
