@@ -1,5 +1,4 @@
-import day1b
-import gleam/dict.{type Dict, get, insert}
+import gleam/dict.{type Dict, insert}
 import gleam/io
 import gleam/list
 import gleam/result
@@ -70,8 +69,6 @@ fn create_matrix(file: String) -> Matrix {
   |> string.split("\n")
   |> list.index_fold(dict.new(), fn(matrix, line, y) {
     string.to_graphemes(line)
-    |> list.index_fold(matrix, fn(matrix, char, x) {
-      insert(matrix, #(x, y), char)
-    })
+    |> list.index_fold(matrix, fn(acc, char, x) { insert(acc, #(x, y), char) })
   })
 }
