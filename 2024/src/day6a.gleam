@@ -1,5 +1,4 @@
-import gleam/dict.{type Dict, get, has_key, insert}
-import gleam/int
+import gleam/dict.{type Dict, insert}
 import gleam/io
 import gleam/list
 import gleam/option.{None, Some}
