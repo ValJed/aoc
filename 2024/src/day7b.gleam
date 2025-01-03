@@ -49,7 +49,6 @@ fn compute_equation(
     [a, b, ..rest] -> {
       list.fold_until(operators, Unsolvable, fn(solvable, op) {
         let res = op(a, b)
-        // io.debug(res)
         case compute_equation(value, [res, ..rest], operators) {
           Solvable -> Stop(Solvable)
           Unsolvable -> Continue(solvable)
